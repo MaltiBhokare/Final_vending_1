@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vending Machine</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Vending Machine</h1>
+        <div class="products">
+            <!-- <div class="product" id="product1">
+                <img src="{{ url_for('static', filename='Gripper.jpg') }}" alt="Product 1">
+                <p>Gripper Pen</p>
+                <button onclick="addToCart('product1')">Add to Cart</button>
+                <div>
+                    <span>Price: ₹10</span><br>
+                    <span>Remaining: <span id="product1-sold">5</span></span><br>
+                    <span>Sold: <span id="product1-remaining">0</span></span>
+                </div>
+            </div> -->
+            <div class="product" id="product1">
+                <img src="{{ url_for('static', filename='Dairy_Milk.jpg') }}" alt="Dairy_Milk">
+                <p>Dairy Milk</p>
+                <button onclick="addToCart('product1')">Add to Cart</button>
+                <div>
+                    <span>Price: ₹10</span><br>
+                    <span>Remaining: <span id="product1-sold">5</span></span><br>
+                    <span>Sold: <span id="product1-remaining">0</span></span>
+                </div>
+            </div>
+            <div class="product" id="product2">
+                <img src="{{ url_for('static', filename='5_star.jpg') }}" alt="5_star">
+                <p>5 Star</p>
+                <button onclick="addToCart('product2')">Add to Cart</button>
+                <div>
+                    <span>Price: ₹10</span><br>
+                    <span>Remaining: <span id="product2-sold">5</span></span><br>
+                    <span>Sold: <span id="product2-remaining">0</span></span>
+                </div>
+            </div>
+            <div class="product" id="product3">
+                <img src="{{ url_for('static', filename='kitkat.png') }}" alt="kitkat">
+                <p>Kit Kat</p>
+                <button onclick="addToCart('product3')">Add to Cart</button>
+                <div>
+                    <span>Price: ₹10</span><br>
+                    <span>Remaining: <span id="product3-sold">5</span></span><br>
+                    <span>Sold: <span id="product3-remaining">0</span></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="cart">
+            <h2>Cart</h2>
+            <ul id="cart-items">
+                <!-- Cart items will be added dynamically here -->
+            </ul>
+            
+            <button onclick="checkout()">Checkout</button>
+        </div>
+    </div>
+
+    <div id="payment-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Payment</h2>
+            <p>Total Amount: ₹<span id="total-amount">0</span></p>
+            <button onclick="processPayment()">Pay Now</button>
+        </div>
+    </div>
+
+    <div id="message" class="message"></div>
+    <footer>
+        <a href="{{ url_for('static', filename='Aboutus.html') }}" >About Us</a>
+        <a href="/static/PrvacyPolicy.html">Privacy Policy</a>
+        <a href="/static/terms.html">Terms & Conditions</a>
+        <a href="/static/canc.html">Cancellation/Refund Policies</a>
+        
+        <div>contact us:<a style="text-decoration: none;" href="mailto:maltibhokare2003@gmail.com">maltibhokare2003@gmail.com</a></div>
+        <div>contact us:<a style="text-decoration: none;" href="tel:9284600122">9284600122</a></div>
+        <div>Address:Survey No. 499, Plot No 03, Mumbai - Agra National Hwy, Behind Gurudwara, Samta Nagar, Dhule, Maharashtra - 424001</div>
+        
+
+    </footer>
+
+    <script>
+        var cart = {};
+        var razorpay_key = "{{ razorpay_key }}";
+
+        function addToCart(productId) {
+            if (cart[productId]) {
+                if (cart[productId] >= 5) {
+                    showMessage('You have reached the maximum quantity for this product.');
+                    return;
+                }
+                cart[productId]++;
+            } else {
+                cart[productId] = 1;
+            }
+            updateCart();
+            updateSoldAndRemaining(productId);
+            showMessage('Product added to cart');
+        }
+        function updateSoldAndRemaining(productId) {
+            var sold = document.getElementById(productId + '-sold');
+            var remaining = document.getElementById(productId + '-remaining');
+            if (sold && remaining) {
+                var quantity = cart[productId] || 0;
+                console.log(quantity)
+                var totalSold = 5 - quantity;
+                console.log(totalSold)
+                var remainingQuantity = quantity;
+                sold.textContent = totalSold;
+                remaining.textContent = Math.max(0, remainingQuantity);
+            }
+        }
+
+        // function updateSoldAndRemaining(productId) {
+        //     var sold = document.getElementById(productId + '-sold');
+        //     var remaining = document.getElementById(productId + '-remaining');
+        //     if (sold && remaining) {
+        //         var quantity = cart[productId] || 0;
+        //         var totalSold = quantity;
+        //         var remainingQuantity = 5 - quantity;
+        //         sold.textContent = totalSold;
+        //         remaining.textContent = Math.max(0, remainingQuantity);
+        //     }
+        // }
+        function updateCart() {
+            var cartItems = document.getElementById('cart-items');
+            cartItems.innerHTML = '';
+            var totalAmount = 0;
+            for (var productId in cart) {
+                var quantity = cart[productId];
+                var productName = document.getElementById(productId).querySelector('p').textContent;
+                var price = 10; // Assuming each product costs ₹5
+                var totalPrice = quantity * price;
+                totalAmount += totalPrice;
+                var listItem = document.createElement('li');
+                listItem.id = 'cart-item' + productId.slice(-1);
+                var cartItem = document.createElement('li');
+                cartItem.id = 'cart-item' + productId.slice(-1);
+                var removeButton = document.createElement('button');
+                removeButton.textContent = 'Reduce Quantity ';
+                removeButton.onclick = function () {
+                    removeFromCart(productId);
+                };
+                cartItem.appendChild(document.createTextNode(productName + ' '));
+                listItem.textContent = productName + ' x ' + quantity + ' - ₹' + totalPrice;
+                cartItems.appendChild(removeButton);
+                cartItems.appendChild(listItem);
+            }
+            document.getElementById('total-amount').textContent = totalAmount;
+        }
+        function removeFromCart(productId) {
+            if (cart[productId]) {
+                cart[productId]--;
+                if (cart[productId] === 0) {
+                    delete cart[productId];
+                }
+                updateCart();
+                updateSoldAndRemaining(productId);
+                showMessage('Product removed from cart');
+            }
+        }
+
+        // function updateCart() {
+        //     var cartItems = document.getElementById('cart-items');
+        //     cartItems.innerHTML = '';
+        //     var totalAmount = 0;
+        //     for (var productId in cart) {
+        //         var quantity = cart[productId];
+        //         var productName = document.getElementById(productId).querySelector('p').textContent;
+        //         var price = 5; // Assuming each product costs ₹5
+        //         var totalPrice = quantity * price;
+        //         totalAmount += totalPrice;
+        //         var listItem = document.createElement('li');
+        //         listItem.textContent = productName + ' x ' + quantity + ' - ₹' + totalPrice;
+        //         cartItems.appendChild(listItem);
+        //     }
+        //     document.getElementById('total-amount').textContent = totalAmount;
+        // }
+
+        function checkout() {
+            var totalAmount = document.getElementById('total-amount').textContent;
+            var tax=((2.5*parseFloat(totalAmount))/100);
+            totalAmount=(parseFloat(totalAmount)+parseFloat(tax));
+            console.log((totalAmount))
+            var cartItems = [];
+            var cartItem = [];
+            var productId;
+            console.log(cart);
+            cartItem.push({ cart });
+            console.log(cartItem)
+
+
+            // for ( productId in cart) {
+            //     if (cart.hasOwnProperty(productId)) {
+                    // var quantity = math.ceil
+            //         var productName = document.getElementById(productId).querySelector('p').textContent;
+            //         cartItem.push({ productId: productId, productName: productName, quantity: quantity });
+            //         cartItems.push(cartItem);
+            //         console.log(cartItem);
+            //         console.log(cartItems);
+            //         cartItem = [];
+            //         console.log(cartItem);
+            //         // console.log(pro?ductName);
+            //     }
+
+
+            console.log(cartItems)
+            fetch('/create_order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ amount: [cart, totalAmount] })
+
+
+
+
+
+            })
+                .then(response => response.json())
+                .then(data => {
+                    var options = {
+                        "key": razorpay_key,
+                        "amount": data.amount,
+                        "currency": "INR",
+                        "name": "Vending Machine",
+                        "image": "https://www.svkm-iot.ac.in/wp-content/uploads/2023/10/1000100148.png",
+                        "description": "Final Transaction",
+                        "order_id": data.id,
+                        "handler": function (response) {
+                            alert("Payment Successful: " + response.razorpay_payment_id);
+                        },
+                        "prefill": {
+                            "name": "Malti Bhokare",
+                            "email": "malatibhokare2003@gmail.com",
+                            "contact": "9284600122"
+                        },
+                        "notes": {
+                            "address": "Vending Machine Address"
+                        },
+                        "theme": {
+                            "color": "#1C03FF"
+                        }
+                    };
+                    var rzp1 = new Razorpay(options);
+                    rzp1.open();
+                });
+        }
+
+        function showMessage(message) {
+            var messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            setTimeout(function () {
+                messageDiv.textContent = '';
+            }, 3000); // Hide message after 3 seconds
+        }
+    </script>
+</body>
+
+</html>
